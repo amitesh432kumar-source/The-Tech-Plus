@@ -13,7 +13,7 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 9** — Admin dashboard + CMS
 - [x] **Phase 10** — Certificates + reviews + notifications + SEO
 - [x] **Phase 11** — Security + performance + accessibility
-- [ ] Phase 12 — Final QA + deployment preparation
+- [x] **Phase 12** — Final QA + deployment preparation
 
 ## Phase 1 notes
 
@@ -128,3 +128,28 @@ Lint and build clean (40 routes, unchanged route count — this phase only added
 - Accessibility: semantic landmarks (`nav`/`header`/`main`/`footer`) throughout, `aria-label`s confirmed present on every icon-only button, shadcn/Base UI components carry visible focus rings and full keyboard operability by default, form fields all paired with `<Label htmlFor>`, `prefers-reduced-motion` already honored globally since Phase 2. No `<img>` elements exist yet (thumbnails are CSS gradients), so there's no missing-alt-text surface to audit — revisit once real images are uploaded.
 
 Lint and build clean (40 routes, unchanged — this phase touched config/migrations, not routes).
+
+## Phase 12 notes — Final QA + deployment preparation
+
+- Full clean-slate verification: deleted `.next`, ran a fresh production build from zero cache — compiled clean, typechecked clean, all 40 routes generated. Lint clean.
+- Scanned the entire `src/` tree for leftover `TODO`/`FIXME`/debug `console.log` — none found.
+- Reviewed `package.json` — every dependency is actually used; nothing installed and abandoned.
+- Rewrote `README.md` to reflect the finished platform (was still describing Phase-1-only scaffolding) and added `docs/DEPLOYMENT.md`: a concrete pre-launch checklist covering Supabase, Razorpay, email, Vercel env vars, and a post-deploy smoke test script.
+
+### Where this build actually stands
+
+**All 12 phases are implemented, and the app builds/lints clean throughout.** Two things are
+genuinely outstanding, both requiring credentials only the account owner can provide (this
+agent does not enter API keys or secrets):
+
+1. **`SUPABASE_SERVICE_ROLE_KEY`** is still blank as of this commit. Until it's set, the admin
+   CMS's course-content and webinar/event meeting-link fields, order fulfillment, and
+   certificate issuance are code-complete but unverified in a live browser session.
+2. **Razorpay keys** are not configured, so the payment flow is verified only up to "fails
+   gracefully with a clear message" — the actual checkout → payment → verification → webhook
+   path has not been exercised with real (even test-mode) money.
+
+Everything else — auth (including Google OAuth, confirmed working live), the full public
+site, course browsing/search, the course learning player with progress tracking, free
+webinar/event registration, the student dashboard, review submission, and RLS/security
+posture — has been verified against the live Supabase project in-browser, not just built.
