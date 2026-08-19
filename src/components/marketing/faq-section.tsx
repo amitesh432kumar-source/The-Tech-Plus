@@ -4,9 +4,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { demoFaqs } from "@/config/demo-data";
+import { listPublishedFaqs } from "@/services/faqs";
 
-export function FaqSection({ showHeading = true }: { showHeading?: boolean }) {
+export async function FaqSection({ showHeading = true }: { showHeading?: boolean }) {
+  const faqs = await listPublishedFaqs();
+
+  if (faqs.length === 0) return null;
+
   return (
     <section className="border-b border-border bg-muted/30">
       <div className="mx-auto w-full max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
@@ -22,7 +26,7 @@ export function FaqSection({ showHeading = true }: { showHeading?: boolean }) {
         )}
 
         <Accordion className="rounded-2xl border border-border bg-card px-6">
-          {demoFaqs.map((faq, i) => (
+          {faqs.map((faq, i) => (
             <AccordionItem key={i} value={`faq-${i}`}>
               <AccordionTrigger>{faq.question}</AccordionTrigger>
               <AccordionContent>{faq.answer}</AccordionContent>

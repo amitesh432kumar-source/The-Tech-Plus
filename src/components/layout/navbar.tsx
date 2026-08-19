@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, Menu, Search, Shield } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NavSearch } from "@/components/layout/nav-search";
 import { navLinks } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/features/auth/actions";
@@ -70,9 +71,7 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="icon" aria-label="Search">
-            <Search className="size-4" />
-          </Button>
+          <NavSearch />
           <ThemeToggle />
 
           {user ? (

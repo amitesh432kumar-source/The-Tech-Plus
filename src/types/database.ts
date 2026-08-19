@@ -578,29 +578,35 @@ export type Database = {
       }
       instructors: {
         Row: {
+          avatar_url: string | null
           bio: string | null
           created_at: string
+          display_name: string | null
           expertise: string | null
           id: string
-          profile_id: string
+          profile_id: string | null
           social_links: Json
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          display_name?: string | null
           expertise?: string | null
           id?: string
-          profile_id: string
+          profile_id?: string | null
           social_links?: Json
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          display_name?: string | null
           expertise?: string | null
           id?: string
-          profile_id?: string
+          profile_id?: string | null
           social_links?: Json
           updated_at?: string
         }

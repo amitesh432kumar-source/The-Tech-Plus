@@ -2,10 +2,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/courses/course-card";
-import { demoCourses } from "@/config/demo-data";
+import { listFeaturedCourses } from "@/services/courses";
 
-export function FeaturedCourses() {
-  const featured = demoCourses.filter((c) => c.featured);
+export async function FeaturedCourses() {
+  const featured = await listFeaturedCourses(4);
+
+  if (featured.length === 0) return null;
 
   return (
     <section className="border-b border-border">

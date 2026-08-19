@@ -2,9 +2,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WebinarCard } from "@/components/webinars/webinar-card";
-import { demoWebinars } from "@/config/demo-data";
+import { listUpcomingWebinars } from "@/services/webinars";
 
-export function UpcomingWebinars() {
+export async function UpcomingWebinars() {
+  const webinars = await listUpcomingWebinars(3);
+
+  if (webinars.length === 0) return null;
+
   return (
     <section className="border-b border-border bg-muted/30">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -23,7 +27,7 @@ export function UpcomingWebinars() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {demoWebinars.map((webinar) => (
+          {webinars.map((webinar) => (
             <WebinarCard key={webinar.slug} webinar={webinar} />
           ))}
         </div>

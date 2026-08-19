@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { demoInstructors } from "@/config/demo-data";
+import { listInstructors } from "@/services/instructors";
 
 function initials(name: string) {
   return name
@@ -11,7 +11,11 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function Instructors() {
+export async function Instructors() {
+  const instructors = await listInstructors(3);
+
+  if (instructors.length === 0) return null;
+
   return (
     <section className="border-b border-border bg-muted/30">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -23,8 +27,8 @@ export function Instructors() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {demoInstructors.map((instructor) => (
-            <Card key={instructor.slug} className="card-hover border-border ring-0">
+          {instructors.map((instructor) => (
+            <Card key={instructor.id} className="card-hover border-border ring-0">
               <CardHeader className="flex-row items-center gap-3">
                 <Avatar size="lg">
                   <AvatarFallback>{initials(instructor.name)}</AvatarFallback>

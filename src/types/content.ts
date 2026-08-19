@@ -1,7 +1,7 @@
 /**
- * Lightweight content shapes used by the public marketing UI until the
- * database schema (Phase 3) and CMS-backed fetching (Phase 4) land. Keep
- * these aligned with the eventual `courses`/`webinars`/etc. tables.
+ * View-model shapes consumed by the public UI. Services in `src/services`
+ * map raw Supabase rows into these — components never touch DB row shapes
+ * directly, so the UI doesn't need to change if the schema does.
  */
 
 export type CourseLevel = "beginner" | "intermediate" | "advanced";
@@ -23,9 +23,42 @@ export interface CourseSummary {
   featured?: boolean;
 }
 
-export type WebinarStatus = "upcoming" | "live" | "completed" | "cancelled";
+export interface CourseLessonView {
+  id: string;
+  title: string;
+  contentType: string;
+  durationMinutes: number;
+  isPreview: boolean;
+}
+
+export interface CourseModuleView {
+  id: string;
+  title: string;
+  lessons: CourseLessonView[];
+}
+
+export interface CourseReviewView {
+  id: string;
+  rating: number;
+  reviewText: string | null;
+  createdAt: string;
+  studentName: string;
+}
+
+export interface CourseDetail extends CourseSummary {
+  description: string;
+  learningOutcomes: string[];
+  requirements: string[];
+  instructorBio: string | null;
+  instructorExpertise: string | null;
+  modules: CourseModuleView[];
+  reviews: CourseReviewView[];
+}
+
+export type WebinarStatus = "draft" | "upcoming" | "live" | "completed" | "cancelled";
 
 export interface WebinarSummary {
+  id: string;
   slug: string;
   title: string;
   description: string;
@@ -39,17 +72,36 @@ export interface WebinarSummary {
   status: WebinarStatus;
 }
 
+export interface WebinarDetail extends WebinarSummary {
+  speakerBio: string | null;
+  timezone: string;
+  meetingUrl: string | null;
+  recordingUrl: string | null;
+}
+
+export type WorkshopType = "workshop" | "bootcamp" | "live-class" | "event";
+
 export interface WorkshopSummary {
+  id: string;
   slug: string;
   title: string;
-  type: "workshop" | "bootcamp" | "live-class" | "event";
+  type: WorkshopType;
   description: string;
   date: string;
   durationHours: number;
+  price: number | "free";
+  seatsTotal: number;
+  seatsTaken: number;
+  status: WebinarStatus;
+}
+
+export interface WorkshopDetail extends WorkshopSummary {
+  meetingUrl: string | null;
+  recordingUrl: string | null;
 }
 
 export interface InstructorSummary {
-  slug: string;
+  id: string;
   name: string;
   expertise: string;
   bio: string;
@@ -66,5 +118,5 @@ export interface TestimonialSummary {
 export interface FaqItem {
   question: string;
   answer: string;
-  category: "courses" | "webinars" | "payments" | "access" | "certificates" | "account" | "support";
+  category: "courses" | "webinars" | "payments" | "access" | "certificates" | "account" | "support" | "general";
 }

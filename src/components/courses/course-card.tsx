@@ -52,10 +52,12 @@ export function CourseCard({ course }: { course: CourseSummary }) {
           <span className="inline-flex items-center gap-1">
             <Clock className="size-3.5" /> {course.durationHours}h · {course.lessonCount} lessons
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Star className="size-3.5 fill-current text-[var(--brand-purple)]" />
-            {course.rating.toFixed(1)} ({course.reviewCount})
-          </span>
+          {course.reviewCount > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <Star className="size-3.5 fill-current text-[var(--brand-purple)]" />
+              {course.rating.toFixed(1)} ({course.reviewCount})
+            </span>
+          )}
         </div>
       </CardContent>
       <CardFooter className="mt-2 flex items-center justify-between border-none bg-transparent px-(--card-spacing) pb-(--card-spacing)">

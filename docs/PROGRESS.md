@@ -5,7 +5,7 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 1** — Project foundation + architecture
 - [x] **Phase 2** — Design system + branding + public UI
 - [x] **Phase 3** — Supabase + authentication + database foundation
-- [ ] Phase 4 — Public website + courses + webinars
+- [x] **Phase 4** — Public website + courses + webinars
 - [ ] Phase 5 — Course learning system
 - [ ] Phase 6 — Webinar/live class system
 - [ ] Phase 7 — Razorpay payments + enrollment
@@ -48,3 +48,16 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - Navbar now reflects real auth state (server-fetched in the root layout): shows Login/Sign Up when signed out, an avatar dropdown (Dashboard, Admin Dashboard if applicable, Logout) when signed in, both desktop and mobile.
 - Verified end-to-end in-browser against the live Supabase project: register → profile row created by trigger → login → dashboard access → `/admin` blocked for a student → promoted to admin via SQL → `/admin` access granted → `?next=` correctly returns the user to the originally-requested protected page → logout. Test accounts were deleted afterward (cascade removed their profiles too).
 - Supabase project has email confirmation ON by default (`email_confirmed_at` null until confirmed) — sign-up does not auto-log-in; this is the secure default and was left as-is.
+
+## Phase 4 notes
+
+- **All demo data is gone.** `src/config/demo-data.ts` was deleted; every public page now reads from Supabase. Seed catalog content (5 courses with 11 modules / 29 lessons, 4 instructors, 5 categories, 3 webinars, 3 events, 7 FAQs) lives in `supabase/migrations/0005_seed_content.sql` and is fully editable via the admin CMS in Phase 9.
+- **Testimonials were deliberately removed** (`0006_remove_fabricated_testimonials.sql`). The seed originally invented quotes attributed to named people; that's fake social proof even when labeled "demo", so the rows were deleted and the section now simply doesn't render until real testimonials exist.
+- Services layer (`src/services/`): `courses`, `webinars`, `events`, `instructors`, `testimonials`, `faqs`, `search`. Components consume view models from `types/content.ts` and never touch raw DB row shapes.
+- Pages: `/courses` (debounced search + category/level filters + sort, empty state), `/courses/[slug]` (breadcrumb, outcomes, requirements, accordion curriculum, instructor, reviews, course FAQs, related courses, desktop sticky enroll card + mobile sticky CTA, dynamic SEO/OG metadata), `/webinars` + `/webinars/[slug]` (live countdown, seat availability), `/workshops` + `/workshops/[slug]`, `/search` + `/api/search` (navbar dropdown with debounced suggestions).
+- **Real registration works** for free webinars/events via server actions (`features/webinars/actions.ts`, `features/events/actions.ts`) — server-side auth check, price check (paid items rejected until Phase 7), seat-limit check, and duplicate handling. Verified live: registering dropped seats 500→499 and persisted a row.
+- **Security fix found during verification** (`0007_lesson_visibility.sql`): the original RLS policy hid entire non-preview lesson *rows* from visitors, which silently broke public lesson counts (a 9-lesson course displayed as "2 lessons"). Replaced with row-level access to any lesson of a *published* course plus **column-level** grants that withhold `content_url`/`content_text` from `anon`/`authenticated`. Confirmed against the live REST API: selecting `content_url` returns `42501 permission denied`, while `title` returns normally. Enrolled-student content access will go through the server in the course-player phase.
+- Fixed a pre-existing lint error in `ThemeToggle` (setState-in-effect) by rendering both icons and letting CSS pick via the `dark` class — no mount flag, no hydration mismatch.
+- `sitemap.ts` is now dynamic (includes every published course/webinar/event slug).
+- Verified in-browser: course listing counts now match the DB exactly, detail pages render full curriculum, `?next=` redirect after login lands on the intended page, search returns correct results, workshops list correctly. Lint and build clean. Test account deleted afterward.
+- **Still not possible:** buying anything. Enroll buttons say "Enrollment Opens Soon" and paid webinars/events are gated — Razorpay lands in Phase 7. Google Sign-In still returns 400 until an OAuth client is configured in Supabase.

@@ -2,9 +2,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkshopCard } from "@/components/workshops/workshop-card";
-import { demoWorkshops } from "@/config/demo-data";
+import { listUpcomingWorkshops } from "@/services/events";
 
-export function Workshops() {
+export async function Workshops() {
+  const workshops = await listUpcomingWorkshops(3);
+
+  if (workshops.length === 0) return null;
+
   return (
     <section className="border-b border-border">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -23,7 +27,7 @@ export function Workshops() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {demoWorkshops.map((workshop) => (
+          {workshops.map((workshop) => (
             <WorkshopCard key={workshop.slug} workshop={workshop} />
           ))}
         </div>
