@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { WebinarDetail, WebinarStatus, WebinarSummary } from "@/types/content";
 import type { Tables } from "@/types/database";
 
-type WebinarRow = Tables<"webinars">;
+type WebinarRow = Omit<Tables<"webinars">, "meeting_url" | "recording_url">;
 
 async function countSeats(webinarId: string): Promise<number> {
   const supabase = await createClient();
@@ -30,12 +31,15 @@ function toSummary(row: WebinarRow, seatsTaken: number): WebinarSummary {
   };
 }
 
+const PUBLIC_COLUMNS =
+  "id, slug, title, description, speaker_name, speaker_bio, image_url, scheduled_date, scheduled_time, timezone, duration_minutes, price, max_seats, status, created_at, updated_at";
+
 export async function listUpcomingWebinars(limit = 3): Promise<WebinarSummary[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("webinars")
-    .select("*")
+    .select(PUBLIC_COLUMNS)
     .in("status", ["upcoming", "live"])
     .order("scheduled_date", { ascending: true })
     .limit(limit);
@@ -50,7 +54,7 @@ export async function listWebinars(): Promise<WebinarSummary[]> {
 
   const { data, error } = await supabase
     .from("webinars")
-    .select("*")
+    .select(PUBLIC_COLUMNS)
     .neq("status", "draft")
     .order("scheduled_date", { ascending: true });
 
@@ -64,7 +68,7 @@ export async function getWebinarBySlug(slug: string): Promise<WebinarDetail | nu
 
   const { data: row, error } = await supabase
     .from("webinars")
-    .select("*")
+    .select(PUBLIC_COLUMNS)
     .eq("slug", slug)
     .neq("status", "draft")
     .single();
@@ -77,8 +81,11 @@ export async function getWebinarBySlug(slug: string): Promise<WebinarDetail | nu
     ...toSummary(row, seatsTaken),
     speakerBio: row.speaker_bio,
     timezone: row.timezone,
-    meetingUrl: row.meeting_url,
-    recordingUrl: row.recording_url,
+    // Meeting/recording links are withheld from the public read (see
+    // migration 0008) — only attached via getWebinarAccessLinks below,
+    // after the caller is confirmed registered or admin.
+    meetingUrl: null,
+    recordingUrl: null,
   };
 }
 
@@ -91,4 +98,40 @@ export async function isRegisteredForWebinar(webinarId: string, studentId: strin
     .eq("student_id", studentId)
     .maybeSingle();
   return !!data;
+}
+
+/** Meeting/recording links — call only after verifying registration or admin. */
+export async function getWebinarAccessLinks(webinarId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("webinars")
+    .select("meeting_url, recording_url")
+    .eq("id", webinarId)
+    .single();
+  return { meetingUrl: data?.meeting_url ?? null, recordingUrl: data?.recording_url ?? null };
+}
+
+export interface MyWebinarRegistration {
+  registrationId: string;
+  webinar: WebinarSummary;
+}
+
+export async function listMyWebinarRegistrations(studentId: string): Promise<MyWebinarRegistration[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("webinar_registrations")
+    .select(`id, webinars(${PUBLIC_COLUMNS})`)
+    .eq("student_id", studentId)
+    .order("registered_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  const results: MyWebinarRegistration[] = [];
+  for (const r of data) {
+    const w = r.webinars as unknown as WebinarRow | null;
+    if (!w) continue;
+    results.push({ registrationId: r.id, webinar: toSummary(w, await countSeats(w.id)) });
+  }
+  return results;
 }

@@ -7,6 +7,7 @@
 export type CourseLevel = "beginner" | "intermediate" | "advanced";
 
 export interface CourseSummary {
+  id: string;
   slug: string;
   title: string;
   shortDescription: string;

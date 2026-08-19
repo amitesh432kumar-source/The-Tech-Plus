@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BookOpen, Clock, Layers } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CheckoutButton } from "@/components/payments/checkout-button";
 import type { CourseDetail } from "@/types/content";
 
 function formatPrice(amount: number) {
@@ -14,10 +15,12 @@ function formatPrice(amount: number) {
 export function CourseEnrollCard({
   course,
   isAuthenticated,
+  isEnrolled,
   courseSlug,
 }: {
   course: CourseDetail;
   isAuthenticated: boolean;
+  isEnrolled: boolean;
   courseSlug: string;
 }) {
   const discount =
@@ -39,10 +42,15 @@ export function CourseEnrollCard({
         )}
       </div>
 
-      {isAuthenticated ? (
-        <Button size="lg" className="mt-4 w-full" disabled>
-          Enrollment Opens Soon
-        </Button>
+      {isEnrolled ? (
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2.5 text-sm font-medium text-foreground">
+          <CheckCircle2 className="size-4 shrink-0 text-[var(--brand-blue)]" />
+          You&apos;re enrolled
+        </div>
+      ) : isAuthenticated ? (
+        <div className="mt-4">
+          <CheckoutButton itemType="course" itemId={course.id} buttonLabel="Enroll Now" />
+        </div>
       ) : (
         <Button
           size="lg"
@@ -52,9 +60,6 @@ export function CourseEnrollCard({
           Login to Enroll
         </Button>
       )}
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        Course purchases open soon — payments are being finalized.
-      </p>
 
       <div className="mt-6 space-y-3 border-t border-border pt-4 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">

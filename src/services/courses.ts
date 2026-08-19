@@ -20,6 +20,7 @@ function summaryStats(modules: CourseJoinRow["course_modules"]) {
 function toSummary(row: CourseJoinRow): CourseSummary {
   const { lessonCount, durationHours } = summaryStats(row.course_modules);
   return {
+    id: row.id,
     slug: row.slug,
     title: row.title,
     shortDescription: row.short_description ?? "",

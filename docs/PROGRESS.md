@@ -6,10 +6,10 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 2** — Design system + branding + public UI
 - [x] **Phase 3** — Supabase + authentication + database foundation
 - [x] **Phase 4** — Public website + courses + webinars
-- [ ] Phase 5 — Course learning system
-- [ ] Phase 6 — Webinar/live class system
-- [ ] Phase 7 — Razorpay payments + enrollment
-- [ ] Phase 8 — Student dashboard
+- [x] **Phase 5** — Course learning system
+- [x] **Phase 6** — Webinar/live class system
+- [x] **Phase 7** — Razorpay payments + enrollment (code-complete; needs real Razorpay keys to test live)
+- [x] **Phase 8** — Student dashboard
 - [ ] Phase 9 — Admin dashboard + CMS
 - [ ] Phase 10 — Certificates + reviews + notifications + SEO
 - [ ] Phase 11 — Security + performance + accessibility
@@ -61,3 +61,34 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - `sitemap.ts` is now dynamic (includes every published course/webinar/event slug).
 - Verified in-browser: course listing counts now match the DB exactly, detail pages render full curriculum, `?next=` redirect after login lands on the intended page, search returns correct results, workshops list correctly. Lint and build clean. Test account deleted afterward.
 - **Still not possible:** buying anything. Enroll buttons say "Enrollment Opens Soon" and paid webinars/events are gated — Razorpay lands in Phase 7. Google Sign-In still returns 400 until an OAuth client is configured in Supabase.
+
+## Phase 5 notes — Course learning system
+
+- `services/learning.ts`: `listEnrolledCourses` (progress %), `getCoursePlayerData` (metadata via normal client, actual lesson content via service-role client only if enrolled/admin/preview).
+- Lesson player at `/dashboard/courses/[courseId]/lesson/[lessonId]`: curriculum sidebar (desktop, sticky) + mobile drawer, video/text/pdf/external content renderer with YouTube/Vimeo embed detection, prev/next navigation, mark-complete action, resources list.
+- `/dashboard/courses/[courseId]` redirects straight into the player (continue where left off, or lesson one).
+- Progress action (`features/progress/actions.ts`) inserts `course_progress`, updates `last_lesson_id`, and — new in this pass — checks for course completion and issues a certificate automatically (see Phase 10 notes).
+
+## Phase 6 notes — Webinar/live class system
+
+- `/dashboard/webinars` lists both webinar and event registrations with status badges.
+- **Security fix found while building this**: `getWebinarBySlug`/`getWorkshopBySlug` were returning `meeting_url`/`recording_url` to every visitor of the *public* detail page, not just registered attendees — same class of bug as the Phase 4 lesson-content issue. Fixed with the same pattern (migration `0008_meeting_url_protection.sql`): row access stays public, but `meeting_url`/`recording_url` are revoked at the column-grant level from `anon`/`authenticated` and only attached server-side (`getWebinarAccessLinks`/`getEventAccessLinks`, service-role client) after confirming registration or admin.
+
+## Phase 7 notes — Razorpay payments + enrollment
+
+- `lib/razorpay/client.ts`, full order → checkout → verify flow: `createOrderAction` computes price **from the database**, never the client; validates coupons server-side (`features/payments/coupon.ts`, service-role — coupons have no client-read policy by design); creates `orders`/`order_items`; creates the Razorpay order; returns checkout params.
+- `CheckoutButton` (client) loads `checkout.razorpay.com/v1/checkout.js`, opens Razorpay Checkout, and on success calls `verifyPaymentAction`, which recomputes the HMAC-SHA256 signature server-side (`crypto.timingSafeEqual`) before trusting anything the client returned.
+- `services/fulfillment.ts` (`fulfillOrder`) grants access (course enrollment / webinar or event registration) and is **idempotent by construction** — safe to call from both the client-side verify path and the webhook, relying on unique constraints rather than manual duplicate-detection.
+- `/api/webhooks/razorpay` — signature-verified reliability backstop for cases the client-side flow can miss (tab closed mid-payment, network blip). Acknowledges (200) even when `RAZORPAY_WEBHOOK_SECRET` isn't set yet, so Razorpay doesn't retry-storm an unconfigured endpoint.
+- Free items (or 100%-off coupons) skip Razorpay entirely and fulfill immediately.
+- **Not yet live-tested**: no real Razorpay keys are configured, so `createOrderAction` currently returns "Payments aren't configured yet" for any priced item — confirmed this fails gracefully rather than crashing. Needs real (test-mode is fine) `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`/`RAZORPAY_WEBHOOK_SECRET` from the account owner before it can be exercised end-to-end.
+
+## Phase 8 notes — Student dashboard
+
+- `DashboardShell`/`DashboardNav` — a shared wrapper component (not a Next.js layout file, deliberately) so the immersive lesson player can opt out of the sidebar chrome while every other `/dashboard/*` page opts in.
+- `/dashboard` (overview: stat cards, continue-learning, upcoming registered webinars), `/dashboard/courses`, `/dashboard/webinars`, `/dashboard/orders`, `/dashboard/certificates`, `/dashboard/profile` (edit full name), `/dashboard/notifications` (mark read / mark all read).
+- All verified rendering correctly in-browser (empty states, real auth) — end-to-end data flows (real orders, real certificates) depend on the service-role key per above.
+
+## Blocker hit during Phase 7 verification
+
+`SUPABASE_SERVICE_ROLE_KEY` was left blank in Phase 3 (credentials aren't something Claude enters itself). Discovered live via a genuine runtime error ("supabaseKey is required") when testing checkout. This key gates: order creation, certificate issuance, notification creation, webinar/event meeting-link reveal, and most of Phase 9's admin CMS. The user is adding it directly to `.env.local` from the Supabase dashboard (Project Settings → API → service_role secret) — Claude does not see or handle the value. **Most admin CRUD does not actually need this key** — RLS already grants `is_admin()` full read/write on courses/webinars/events/etc. via the normal authenticated client; only the few columns already locked down (lesson `content_url`, webinar/event `meeting_url`/`recording_url`) require the service-role client.

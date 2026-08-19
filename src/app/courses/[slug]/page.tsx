@@ -16,6 +16,7 @@ import {
 import { getCourseBySlug, listRelatedCourses } from "@/services/courses";
 import { listFaqsByCategory } from "@/services/faqs";
 import { getCurrentUser } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { siteConfig } from "@/config/site";
 
 export async function generateMetadata({
@@ -58,6 +59,18 @@ export default async function CourseDetailPage({
     listFaqsByCategory("courses"),
     getCurrentUser(),
   ]);
+
+  let isEnrolled = false;
+  if (user) {
+    const supabase = await createClient();
+    const { data: enrollment } = await supabase
+      .from("course_enrollments")
+      .select("id")
+      .eq("course_id", course.id)
+      .eq("student_id", user.id)
+      .maybeSingle();
+    isEnrolled = !!enrollment;
+  }
 
   return (
     <>
@@ -195,7 +208,12 @@ export default async function CourseDetailPage({
 
         <aside className="hidden lg:block">
           <div className="sticky top-24">
-            <CourseEnrollCard course={course} isAuthenticated={!!user} courseSlug={slug} />
+            <CourseEnrollCard
+              course={course}
+              isAuthenticated={!!user}
+              isEnrolled={isEnrolled}
+              courseSlug={slug}
+            />
           </div>
         </aside>
       </section>
@@ -213,7 +231,13 @@ export default async function CourseDetailPage({
         </section>
       )}
 
-      <CourseMobileCta price={course.price} isAuthenticated={!!user} courseSlug={slug} />
+      <CourseMobileCta
+        courseId={course.id}
+        price={course.price}
+        isAuthenticated={!!user}
+        isEnrolled={isEnrolled}
+        courseSlug={slug}
+      />
     </>
   );
 }

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronRight, Clock, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { WorkshopRegisterCard } from "@/components/workshops/workshop-register-card";
-import { getWorkshopBySlug, isRegisteredForEvent } from "@/services/events";
+import { getEventAccessLinks, getWorkshopBySlug, isRegisteredForEvent } from "@/services/events";
 import { getCurrentUser } from "@/lib/auth/session";
 import { siteConfig } from "@/config/site";
 
@@ -46,6 +46,8 @@ export default async function WorkshopDetailPage({
 
   const user = await getCurrentUser();
   const alreadyRegistered = user ? await isRegisteredForEvent(workshop.id, user.id) : false;
+  const isAdmin = user?.profile.role === "admin";
+  const accessLinks = alreadyRegistered || isAdmin ? await getEventAccessLinks(workshop.id) : null;
   const seatsLeft = workshop.seatsTotal - workshop.seatsTaken;
 
   const formattedDate = new Date(workshop.date).toLocaleDateString("en-IN", {
@@ -80,6 +82,33 @@ export default async function WorkshopDetailPage({
             <Clock className="size-4" /> {workshop.durationHours}h
           </span>
         </div>
+
+        {accessLinks?.meetingUrl && (
+          <div className="mt-6 rounded-xl border border-[var(--brand-blue)]/30 bg-[var(--brand-blue)]/5 p-4">
+            <p className="text-sm font-medium">You&apos;re registered — here&apos;s your access link</p>
+            <a
+              href={accessLinks.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-sm text-[var(--brand-blue)] hover:underline"
+            >
+              Join the session →
+            </a>
+          </div>
+        )}
+        {accessLinks?.recordingUrl && (
+          <div className="mt-3 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-medium">Recording available</p>
+            <a
+              href={accessLinks.recordingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-sm text-[var(--brand-blue)] hover:underline"
+            >
+              Watch the recording →
+            </a>
+          </div>
+        )}
       </div>
 
       <aside>

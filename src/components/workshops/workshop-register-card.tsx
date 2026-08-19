@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/webinars/countdown";
+import { CheckoutButton } from "@/components/payments/checkout-button";
 import { registerForEventAction, type RegisterState } from "@/features/events/actions";
 
 const initialState: RegisterState = {};
@@ -59,14 +60,18 @@ export function WorkshopRegisterCard({
             </Button>
             {state.error && <p className="mt-2 text-sm text-destructive">{state.error}</p>}
           </form>
+        ) : isFull ? (
+          <Button className="mt-4 w-full" disabled>
+            Fully Booked
+          </Button>
         ) : (
           <div className="mt-4">
-            <Button className="w-full" disabled>
-              Registration Opens Soon
-            </Button>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Paid event registration launches with payments.
-            </p>
+            <CheckoutButton
+              itemType="event"
+              itemId={eventId}
+              buttonLabel="Register Now"
+              successLabel="You're registered"
+            />
           </div>
         )
       ) : (

@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { WebinarRegisterCard } from "@/components/webinars/webinar-register-card";
-import { getWebinarBySlug, isRegisteredForWebinar } from "@/services/webinars";
+import { getWebinarAccessLinks, getWebinarBySlug, isRegisteredForWebinar } from "@/services/webinars";
 import { listFaqsByCategory } from "@/services/faqs";
 import { getCurrentUser } from "@/lib/auth/session";
 import { siteConfig } from "@/config/site";
@@ -46,6 +46,9 @@ export default async function WebinarDetailPage({
 
   const [faqs, user] = await Promise.all([listFaqsByCategory("webinars"), getCurrentUser()]);
   const alreadyRegistered = user ? await isRegisteredForWebinar(webinar.id, user.id) : false;
+  const isAdmin = user?.profile.role === "admin";
+  const accessLinks =
+    alreadyRegistered || isAdmin ? await getWebinarAccessLinks(webinar.id) : null;
   const seatsLeft = webinar.seatsTotal - webinar.seatsTaken;
 
   const formattedDate = new Date(webinar.date).toLocaleDateString("en-IN", {
@@ -85,6 +88,33 @@ export default async function WebinarDetailPage({
             <Clock className="size-4" /> {webinar.durationMinutes} minutes
           </span>
         </div>
+
+        {accessLinks?.meetingUrl && (
+          <div className="mt-6 rounded-xl border border-[var(--brand-blue)]/30 bg-[var(--brand-blue)]/5 p-4">
+            <p className="text-sm font-medium">You&apos;re registered — here&apos;s your access link</p>
+            <a
+              href={accessLinks.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-sm text-[var(--brand-blue)] hover:underline"
+            >
+              Join the webinar →
+            </a>
+          </div>
+        )}
+        {accessLinks?.recordingUrl && (
+          <div className="mt-3 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-medium">Recording available</p>
+            <a
+              href={accessLinks.recordingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-sm text-[var(--brand-blue)] hover:underline"
+            >
+              Watch the recording →
+            </a>
+          </div>
+        )}
 
         {webinar.speakerBio && (
           <div className="mt-10">
