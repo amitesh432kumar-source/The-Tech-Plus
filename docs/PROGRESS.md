@@ -12,7 +12,7 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 8** — Student dashboard
 - [x] **Phase 9** — Admin dashboard + CMS
 - [x] **Phase 10** — Certificates + reviews + notifications + SEO
-- [ ] Phase 11 — Security + performance + accessibility
+- [x] **Phase 11** — Security + performance + accessibility
 - [ ] Phase 12 — Final QA + deployment preparation
 
 ## Phase 1 notes
@@ -115,3 +115,16 @@ Build clean at 40 routes; lint clean. Not yet exercised in-browser as an admin (
 - SEO: added `JsonLd` component emitting schema.org structured data — `Course` (with `AggregateRating`/`Offer`) on course pages, `Event` (with `Offer`/availability) on webinar and workshop pages. Dynamic `<title>`/description/OG metadata via `generateMetadata` was already in place from Phase 4; `sitemap.ts` already includes every published/non-draft slug.
 
 Lint and build clean (40 routes, unchanged route count — this phase only added features to existing pages).
+
+## Phase 11 notes — Security, performance, accessibility
+
+- **Re-ran Supabase advisors after every prior phase's migrations.** Security: unchanged — same 4 documented/intentional `is_admin()`/`current_user_role()` exceptions from Phase 3, no new findings across 10 migrations.
+- **Performance, real fixes applied** (migrations `0009_rls_performance.sql`, `0010_missing_indexes.sql`):
+  - 22 RLS policies were re-evaluating `auth.uid()` per row instead of once per query — rewrote every flagged policy to wrap calls as `(select auth.uid())`/`(select public.is_admin())`, the pattern Postgres/Supabase can cache. Verified via the advisor: 0 `auth_rls_initplan` warnings remain (was 22).
+  - 8 foreign keys had no covering index (`certificates.course_id`, `coupon_usage.order_id`/`user_id`, `course_enrollments.last_lesson_id`, `course_progress.lesson_id`, `orders.coupon_id`, `testimonials.course_id`/`student_id`) — added. Verified: 0 `unindexed_foreign_keys` warnings remain (was 8).
+  - **Not fixed, accepted as a tradeoff**: `multiple_permissive_policies` (165 instances) — inherent to the "select own row" + "admin manages all" policy-pair pattern used throughout. Consolidating into fewer combined policies is a larger RLS redesign than this pass warrants at this scale; flagging for a future optimization pass if the app reaches meaningful traffic.
+- **Security headers** added in `next.config.ts`: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` (blocks camera/mic/geolocation), and a real `Content-Security-Policy` scoped to what the app actually uses (Supabase origin, Razorpay checkout domains, YouTube/Vimeo embeds for lesson video).
+  - **Bug caught during verification**: the initial CSP broke React's dev-mode `eval()` usage entirely (confirmed via console — production is unaffected, React never uses eval() there). Fixed by scoping `'unsafe-eval'` to `NODE_ENV === "development"` only; verified via fresh-tab console check that both dev (no eval error) and the served header (`unsafe-eval` present in dev, absent implied for prod) are correct.
+- Accessibility: semantic landmarks (`nav`/`header`/`main`/`footer`) throughout, `aria-label`s confirmed present on every icon-only button, shadcn/Base UI components carry visible focus rings and full keyboard operability by default, form fields all paired with `<Label htmlFor>`, `prefers-reduced-motion` already honored globally since Phase 2. No `<img>` elements exist yet (thumbnails are CSS gradients), so there's no missing-alt-text surface to audit — revisit once real images are uploaded.
+
+Lint and build clean (40 routes, unchanged — this phase touched config/migrations, not routes).
