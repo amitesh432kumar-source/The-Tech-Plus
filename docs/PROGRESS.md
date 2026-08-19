@@ -11,7 +11,7 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 7** — Razorpay payments + enrollment (code-complete; needs real Razorpay keys to test live)
 - [x] **Phase 8** — Student dashboard
 - [x] **Phase 9** — Admin dashboard + CMS
-- [ ] Phase 10 — Certificates + reviews + notifications + SEO
+- [x] **Phase 10** — Certificates + reviews + notifications + SEO
 - [ ] Phase 11 — Security + performance + accessibility
 - [ ] Phase 12 — Final QA + deployment preparation
 
@@ -106,3 +106,12 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - Not built in this pass (lower priority given scope): a dedicated admin notifications/announcement composer, and a `site_settings` key-value editor. Both tables and RLS policies already exist for a future pass.
 
 Build clean at 40 routes; lint clean. Not yet exercised in-browser as an admin (blocked on `SUPABASE_SERVICE_ROLE_KEY`, being added directly to `.env.local` by the account owner).
+
+## Phase 10 notes — Certificates, reviews, notifications, SEO
+
+- Certificates were already wired in Phase 5 (auto-issued on course completion). No further work needed there.
+- Reviews: enrolled, non-admin students who haven't already reviewed a course see a star-rating + text form on the course detail page (`features/reviews/actions.ts`, `ReviewForm`). Submitted reviews land as `pending` and only appear publicly once approved via `/admin/reviews`.
+- Notification coverage gap closed: free webinar/event self-registration (`registerForWebinarAction`/`registerForEventAction`) now calls `notifyUser`, matching the payment-confirmed and certificate-issued notifications already wired in earlier phases.
+- SEO: added `JsonLd` component emitting schema.org structured data — `Course` (with `AggregateRating`/`Offer`) on course pages, `Event` (with `Offer`/availability) on webinar and workshop pages. Dynamic `<title>`/description/OG metadata via `generateMetadata` was already in place from Phase 4; `sitemap.ts` already includes every published/non-draft slug.
+
+Lint and build clean (40 routes, unchanged route count — this phase only added features to existing pages).

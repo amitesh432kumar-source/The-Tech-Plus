@@ -14,6 +14,7 @@ import { getWebinarAccessLinks, getWebinarBySlug, isRegisteredForWebinar } from 
 import { listFaqsByCategory } from "@/services/faqs";
 import { getCurrentUser } from "@/lib/auth/session";
 import { siteConfig } from "@/config/site";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export async function generateMetadata({
   params,
@@ -59,7 +60,31 @@ export default async function WebinarDetailPage({
   });
 
   return (
-    <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: webinar.title,
+          description: webinar.description,
+          startDate: webinar.date,
+          eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+          eventStatus:
+            webinar.status === "cancelled"
+              ? "https://schema.org/EventCancelled"
+              : "https://schema.org/EventScheduled",
+          location: { "@type": "VirtualLocation", url: `${siteConfig.url}/webinars/${slug}` },
+          organizer: { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
+          offers: {
+            "@type": "Offer",
+            price: webinar.price === "free" ? 0 : webinar.price,
+            priceCurrency: "INR",
+            url: `${siteConfig.url}/webinars/${slug}`,
+            availability: seatsLeft > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+          },
+        }}
+      />
+      <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
       <div>
         <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Link href="/" className="hover:text-foreground">Home</Link>
@@ -154,6 +179,7 @@ export default async function WebinarDetailPage({
           />
         </div>
       </aside>
-    </section>
+      </section>
+    </>
   );
 }

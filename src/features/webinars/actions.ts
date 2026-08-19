@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { notifyUser } from "@/services/notifications";
 
 export interface RegisterState {
   error?: string;
@@ -37,7 +38,7 @@ export async function registerForWebinarAction(
 
   const { data: webinar } = await supabase
     .from("webinars")
-    .select("price, max_seats")
+    .select("title, price, max_seats")
     .eq("id", webinarId)
     .single();
 
@@ -63,6 +64,12 @@ export async function registerForWebinarAction(
     if (error.code === "23505") return { success: true }; // already registered
     return { error: "Something went wrong. Please try again." };
   }
+
+  await notifyUser(user.id, {
+    type: "webinar_registered",
+    title: "Webinar registration confirmed",
+    body: `You're registered for "${webinar.title}".`,
+  });
 
   revalidatePath(`/webinars/${webinarSlug}`);
   return { success: true };

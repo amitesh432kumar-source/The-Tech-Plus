@@ -7,6 +7,7 @@ import { WorkshopRegisterCard } from "@/components/workshops/workshop-register-c
 import { getEventAccessLinks, getWorkshopBySlug, isRegisteredForEvent } from "@/services/events";
 import { getCurrentUser } from "@/lib/auth/session";
 import { siteConfig } from "@/config/site";
+import { JsonLd } from "@/components/seo/json-ld";
 
 const typeLabel: Record<string, string> = {
   workshop: "Workshop",
@@ -58,7 +59,31 @@ export default async function WorkshopDetailPage({
   });
 
   return (
-    <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: workshop.title,
+          description: workshop.description,
+          startDate: workshop.date,
+          eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+          eventStatus:
+            workshop.status === "cancelled"
+              ? "https://schema.org/EventCancelled"
+              : "https://schema.org/EventScheduled",
+          location: { "@type": "VirtualLocation", url: `${siteConfig.url}/workshops/${slug}` },
+          organizer: { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
+          offers: {
+            "@type": "Offer",
+            price: workshop.price === "free" ? 0 : workshop.price,
+            priceCurrency: "INR",
+            url: `${siteConfig.url}/workshops/${slug}`,
+            availability: seatsLeft > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+          },
+        }}
+      />
+      <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
       <div>
         <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Link href="/" className="hover:text-foreground">Home</Link>
@@ -124,6 +149,7 @@ export default async function WorkshopDetailPage({
           />
         </div>
       </aside>
-    </section>
+      </section>
+    </>
   );
 }

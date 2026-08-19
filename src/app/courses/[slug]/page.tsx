@@ -7,6 +7,8 @@ import { CourseCard } from "@/components/courses/course-card";
 import { CourseCurriculum } from "@/components/courses/course-curriculum";
 import { CourseEnrollCard } from "@/components/courses/course-enroll-card";
 import { CourseMobileCta } from "@/components/courses/course-mobile-cta";
+import { ReviewForm } from "@/components/courses/review-form";
+import { JsonLd } from "@/components/seo/json-ld";
 import {
   Accordion,
   AccordionContent,
@@ -61,19 +63,56 @@ export default async function CourseDetailPage({
   ]);
 
   let isEnrolled = false;
+  let hasReviewed = false;
   if (user) {
     const supabase = await createClient();
-    const { data: enrollment } = await supabase
-      .from("course_enrollments")
-      .select("id")
-      .eq("course_id", course.id)
-      .eq("student_id", user.id)
-      .maybeSingle();
+    const [{ data: enrollment }, { data: existingReview }] = await Promise.all([
+      supabase
+        .from("course_enrollments")
+        .select("id")
+        .eq("course_id", course.id)
+        .eq("student_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("reviews")
+        .select("id")
+        .eq("course_id", course.id)
+        .eq("student_id", user.id)
+        .maybeSingle(),
+    ]);
     isEnrolled = !!enrollment;
+    hasReviewed = !!existingReview;
   }
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Course",
+          name: course.title,
+          description: course.shortDescription,
+          provider: {
+            "@type": "Organization",
+            name: siteConfig.name,
+            sameAs: siteConfig.url,
+          },
+          ...(course.reviewCount > 0 && {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: course.rating,
+              reviewCount: course.reviewCount,
+            },
+          }),
+          offers: {
+            "@type": "Offer",
+            price: course.price,
+            priceCurrency: "INR",
+            availability: "https://schema.org/InStock",
+            url: `${siteConfig.url}/courses/${slug}`,
+          },
+        }}
+      />
       <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 pt-8 pb-24 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8 lg:pb-12">
         <div>
           <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -186,6 +225,12 @@ export default async function CourseDetailPage({
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {isEnrolled && !hasReviewed && (
+                <div className="mt-4">
+                  <ReviewForm courseId={course.id} courseSlug={slug} />
                 </div>
               )}
             </div>
