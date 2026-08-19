@@ -12,7 +12,7 @@ export interface RegisterState {
 
 /**
  * Self-registration for free workshops/events only — mirrors
- * features/webinars/actions.ts. Paid events require the Razorpay checkout
+ * features/webinars/actions.ts. Paid events require the PayPal checkout
  * flow (Phase 7) before a registration is recorded.
  */
 // The trailing (prevState, formData) args come from useActionState once

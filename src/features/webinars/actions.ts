@@ -13,7 +13,7 @@ export interface RegisterState {
 /**
  * Self-registration for free webinars only — RLS allows any authenticated
  * user to insert their own registration row. Paid webinars require the
- * Razorpay checkout flow (Phase 7) before a registration is recorded.
+ * PayPal checkout flow (Phase 7) before a registration is recorded.
  */
 // The trailing (prevState, formData) args come from useActionState once
 // webinarId/webinarSlug are bound; neither is read, since the target

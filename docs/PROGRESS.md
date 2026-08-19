@@ -153,3 +153,35 @@ Everything else — auth (including Google OAuth, confirmed working live), the f
 site, course browsing/search, the course learning player with progress tracking, free
 webinar/event registration, the student dashboard, review submission, and RLS/security
 posture — has been verified against the live Supabase project in-browser, not just built.
+
+## Payment provider switch — Razorpay → PayPal (2026-08-20)
+
+The site owner does not have a Razorpay account, so at their explicit request the payment
+provider was switched entirely to PayPal (not run alongside Razorpay). Architecture impact
+was contained to the payment-specific layer, since the schema/fulfillment/coupon logic was
+already provider-agnostic:
+
+- Migration `0011_paypal_provider_columns.sql` renamed `orders.razorpay_order_id` →
+  `provider_order_id`, `payments.razorpay_payment_id` → `provider_payment_id`,
+  `payments.razorpay_signature` → `provider_reference`, and added `payments.provider`
+  (defaults `'paypal'`). Applied directly (no production data existed yet).
+- `lib/paypal/client.ts` replaces `lib/razorpay/client.ts`: OAuth2 client-credentials token
+  fetch, `createPaypalOrder`, `capturePaypalOrder` (server-to-server — this call itself is the
+  trust boundary, unlike Razorpay's client-supplied-signature model), and
+  `verifyPaypalWebhookSignature` via PayPal's own verification endpoint.
+- `features/payments/actions.ts`: `createOrderAction` now creates a PayPal order instead of a
+  Razorpay one; `verifyPaymentAction` (HMAC check) replaced by `capturePaymentAction`, which
+  captures the order server-side and trusts that response directly rather than verifying a
+  client-supplied signature.
+- `CheckoutButton` now loads PayPal's JS SDK and renders `paypal.Buttons(...)` in place, instead
+  of opening a Razorpay Checkout modal. `CourseEnrollCard`, `CourseMobileCta`,
+  `WebinarRegisterCard`, `WorkshopRegisterCard` needed no changes — they only ever rendered
+  `<CheckoutButton>` without provider-specific knowledge.
+- `/api/webhooks/paypal` replaces `/api/webhooks/razorpay`: verifies via PayPal's
+  `verify-webhook-signature` endpoint (not a local HMAC recompute, since PayPal signs with an
+  X.509 cert rather than a shared secret) and handles `PAYMENT.CAPTURE.COMPLETED`.
+- CSP (`next.config.ts`), `.env.example`, `README.md`, `docs/DEPLOYMENT.md` updated to PayPal's
+  domains/env vars. `razorpay` npm package uninstalled.
+- **Not yet live-tested**: same status as Razorpay before it — the flow fails gracefully with
+  "payments aren't configured" until the account owner adds real (sandbox is fine)
+  `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET`/`PAYPAL_WEBHOOK_ID` from developer.paypal.com.

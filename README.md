@@ -3,7 +3,7 @@
 > Learn Technology. Build Skills. Create Your Future.
 
 The Tech Plus is a technology education platform: online courses, live webinars, workshops,
-a full student learning-management system, Razorpay-powered payments, and an admin CMS —
+a full student learning-management system, PayPal-powered payments, and an admin CMS —
 built as a production-grade Next.js + Supabase application.
 
 All 12 build phases are complete (see [`docs/PROGRESS.md`](docs/PROGRESS.md) for what shipped
@@ -15,14 +15,14 @@ still need the site owner's action before the platform is fully live — see
 
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (Base UI), Framer Motion
 - **Backend**: Supabase (PostgreSQL, Auth, Row Level Security)
-- **Payments**: Razorpay (order → Checkout.js → signature-verified confirmation → signed webhook backstop)
+- **Payments**: PayPal (order → PayPal Buttons → server-side capture → verified webhook backstop)
 - **Deployment**: Vercel (app) + Supabase (backend)
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in Supabase/Razorpay/email values
+cp .env.example .env.local   # fill in Supabase/PayPal/email values
 npm run dev
 ```
 
@@ -35,7 +35,7 @@ src/
                          dashboard, admin, learning (course player), payments, auth, seo
   features/             Server actions by domain: auth, payments, progress, profile, notifications,
                          reviews, admin/*
-  lib/                  Integration clients: supabase (browser/server/admin/middleware), razorpay, auth, validation
+  lib/                  Integration clients: supabase (browser/server/admin/middleware), paypal, auth, validation
   services/             Server-side data-access/query layer — maps DB rows to view models in types/content.ts
   types/                Shared TypeScript types, incl. generated Supabase types (types/database.ts)
   config/                Site/brand configuration
@@ -50,8 +50,8 @@ docs/
 
 See `.env.example` for the full list of required variables. Never commit real secrets —
 `.env*` files (except `.env.example`) are gitignored. `SUPABASE_SERVICE_ROLE_KEY` and the
-Razorpay secret keys must only ever be read on the server; they're already only referenced
-from server-only modules (`lib/supabase/admin.ts`, `lib/razorpay/client.ts`, server actions).
+PayPal secret keys must only ever be read on the server; they're already only referenced
+from server-only modules (`lib/supabase/admin.ts`, `lib/paypal/client.ts`, server actions).
 
 ## Before you go live
 
@@ -62,10 +62,10 @@ secrets on your behalf):
    secret → add to `.env.local` (local) and your Vercel project's environment variables
    (production). Required for: course-content editing/viewing in the admin CMS, webinar/event
    meeting links, order fulfillment, certificate issuance, and most of `/admin`.
-2. **Razorpay keys** — `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. Test-mode
-   keys are enough to verify the full checkout flow before going live. Without them, "Enroll Now" /
-   "Register Now" buttons on paid items correctly show "payments aren't configured" rather than
-   failing silently.
+2. **PayPal keys** — `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`,
+   `PAYPAL_WEBHOOK_ID`. Sandbox-mode keys (`PAYPAL_MODE=sandbox`, the default) are enough to
+   verify the full checkout flow before going live. Without them, "Enroll Now" / "Register Now"
+   buttons on paid items correctly show "payments aren't configured" rather than failing silently.
 
 Optional, needed for real emails: **`RESEND_API_KEY`** (or swap in another provider — the
 notification system is provider-agnostic; email sending itself isn't wired to a provider yet).

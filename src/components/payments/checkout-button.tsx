@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { siteConfig } from "@/config/site";
 import {
   createOrderAction,
-  verifyPaymentAction,
+  capturePaymentAction,
   type PurchasableType,
+  type CreateOrderState,
 } from "@/features/payments/actions";
-import { loadRazorpayScript } from "@/components/payments/razorpay-types";
+import { loadPaypalScript } from "@/components/payments/paypal-types";
 
 export function CheckoutButton({
   itemType,
@@ -31,8 +31,10 @@ export function CheckoutButton({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [checkout, setCheckout] = useState<CreateOrderState["checkout"] | null>(null);
+  const paypalContainerRef = useRef<HTMLDivElement>(null);
 
-  function handleCheckout() {
+  function handleStartCheckout() {
     setError(null);
     startTransition(async () => {
       const result = await createOrderAction(itemType, itemId, coupon || undefined);
@@ -49,54 +51,67 @@ export function CheckoutButton({
       }
 
       if (result.checkout) {
-        try {
-          await loadRazorpayScript();
-        } catch {
-          setError("Could not load the payment window. Please try again.");
-          return;
-        }
+        setCheckout(result.checkout);
+      }
+    });
+  }
 
-        if (!window.Razorpay) {
-          setError("Could not load the payment window. Please try again.");
-          return;
-        }
+  useEffect(() => {
+    if (!checkout || !paypalContainerRef.current) return;
 
-        const checkout = result.checkout;
-        const razorpay = new window.Razorpay({
-          key: checkout.keyId,
-          amount: checkout.amount,
-          currency: checkout.currency,
-          name: siteConfig.name,
-          description: checkout.itemTitle,
-          order_id: checkout.razorpayOrderId,
-          prefill: { name: checkout.prefillName, email: checkout.prefillEmail },
-          theme: { color: "#4f7cff" },
-          handler: (response) => {
+    let cancelled = false;
+    let buttonsInstance: { close: () => Promise<void> } | null = null;
+
+    loadPaypalScript(checkout.clientId, checkout.currency)
+      .then(() => {
+        if (cancelled || !window.paypal || !paypalContainerRef.current) return;
+
+        const buttons = window.paypal.Buttons({
+          style: { layout: "vertical", color: "blue", shape: "rect", label: "pay" },
+          createOrder: async () => checkout.paypalOrderId,
+          onApprove: async () => {
             startTransition(async () => {
-              const verifyResult = await verifyPaymentAction(
-                checkout.orderId,
-                response.razorpay_order_id,
-                response.razorpay_payment_id,
-                response.razorpay_signature,
-              );
-              if (verifyResult.error) {
-                setError(verifyResult.error);
+              const captureResult = await capturePaymentAction(checkout.orderId, checkout.paypalOrderId);
+              if (captureResult.error) {
+                setError(captureResult.error);
               } else {
                 setSuccess(true);
                 router.refresh();
               }
             });
           },
+          onError: () => {
+            setError("Payment could not be completed. Please try again.");
+          },
         });
-        razorpay.open();
-      }
-    });
-  }
+
+        buttonsInstance = buttons;
+        buttons.render(paypalContainerRef.current);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load the payment window. Please try again.");
+      });
+
+    return () => {
+      cancelled = true;
+      buttonsInstance?.close().catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkout]);
 
   if (success) {
     return (
       <div className="flex items-center gap-2 text-sm font-medium text-[var(--brand-blue)]">
         <CheckCircle2 className="size-4" /> {successLabel}
+      </div>
+    );
+  }
+
+  if (checkout) {
+    return (
+      <div className="space-y-2">
+        <div ref={paypalContainerRef} />
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     );
   }
@@ -114,7 +129,7 @@ export function CheckoutButton({
           />
         </div>
       )}
-      <Button className="w-full" onClick={handleCheckout} disabled={pending}>
+      <Button className="w-full" onClick={handleStartCheckout} disabled={pending}>
         {pending ? "Please wait…" : buttonLabel}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}

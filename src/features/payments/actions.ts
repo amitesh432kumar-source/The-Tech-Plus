@@ -1,27 +1,26 @@
 "use server";
 
-import crypto from "crypto";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRazorpayClient, isRazorpayConfigured } from "@/lib/razorpay/client";
+import { createPaypalOrder, capturePaypalOrder, isPaypalConfigured } from "@/lib/paypal/client";
 import { validateCoupon } from "@/features/payments/coupon";
 import { fulfillOrder } from "@/services/fulfillment";
+import type { Json } from "@/types/database";
 
 export type PurchasableType = "course" | "webinar" | "event";
+
+const CURRENCY = process.env.PAYPAL_CURRENCY || "USD";
 
 export interface CreateOrderState {
   error?: string;
   freeEnrollment?: boolean;
   checkout?: {
     orderId: string;
-    razorpayOrderId: string;
-    amount: number; // paise
+    paypalOrderId: string;
+    clientId: string;
     currency: string;
-    keyId: string;
     itemTitle: string;
-    prefillName: string;
-    prefillEmail: string;
   };
 }
 
@@ -140,38 +139,34 @@ export async function createOrderAction(
     price_snapshot: item.price,
   });
 
-  // Free after discount (or free item) — skip Razorpay entirely.
+  // Free after discount (or free item) — skip PayPal entirely.
   if (total <= 0) {
     await admin.from("orders").update({ status: "paid" }).eq("id", order.id);
     await fulfillOrder(order.id);
     return { freeEnrollment: true };
   }
 
-  if (!isRazorpayConfigured()) {
+  if (!isPaypalConfigured() || !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
     return { error: "Payments aren't configured yet. Please check back soon." };
   }
 
   try {
-    const razorpay = getRazorpayClient();
-    const rpOrder = await razorpay.orders.create({
-      amount: Math.round(total * 100),
-      currency: "INR",
-      receipt: order.id,
-      notes: { internal_order_id: order.id, item_type: itemType, item_id: itemId },
+    const ppOrder = await createPaypalOrder({
+      internalOrderId: order.id,
+      amount: total.toFixed(2),
+      currency: CURRENCY,
+      itemTitle: item.title,
     });
 
-    await admin.from("orders").update({ razorpay_order_id: rpOrder.id }).eq("id", order.id);
+    await admin.from("orders").update({ provider_order_id: ppOrder.id }).eq("id", order.id);
 
     return {
       checkout: {
         orderId: order.id,
-        razorpayOrderId: rpOrder.id,
-        amount: Math.round(total * 100),
-        currency: "INR",
-        keyId: process.env.RAZORPAY_KEY_ID!,
+        paypalOrderId: ppOrder.id,
+        clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+        currency: CURRENCY,
         itemTitle: item.title,
-        prefillName: user.profile.full_name ?? "",
-        prefillEmail: user.email ?? "",
       },
     };
   } catch {
@@ -179,54 +174,53 @@ export async function createOrderAction(
   }
 }
 
-export interface VerifyState {
+export interface CaptureState {
   error?: string;
   success?: boolean;
 }
 
-export async function verifyPaymentAction(
+export async function capturePaymentAction(
   orderId: string,
-  razorpayOrderId: string,
-  razorpayPaymentId: string,
-  razorpaySignature: string,
-): Promise<VerifyState> {
+  paypalOrderId: string,
+): Promise<CaptureState> {
   const user = await requireUser();
 
-  if (!process.env.RAZORPAY_KEY_SECRET) {
+  if (!isPaypalConfigured()) {
     return { error: "Payments aren't configured." };
   }
-
-  const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-    .digest("hex");
-
-  const signatureValid =
-    expectedSignature.length === razorpaySignature.length &&
-    crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(razorpaySignature));
-
-  if (!signatureValid) return { error: "Payment verification failed." };
 
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id, user_id, razorpay_order_id, total")
+    .select("id, user_id, provider_order_id, total")
     .eq("id", orderId)
     .single();
 
-  if (!order || order.user_id !== user.id || order.razorpay_order_id !== razorpayOrderId) {
+  if (!order || order.user_id !== user.id || order.provider_order_id !== paypalOrderId) {
     return { error: "Order mismatch — please contact support." };
+  }
+
+  const capture = await capturePaypalOrder(paypalOrderId);
+
+  if (!capture.ok || capture.data.status !== "COMPLETED") {
+    return { error: "Payment could not be confirmed. Please contact support." };
+  }
+
+  const captureRecord = capture.data.purchase_units?.[0]?.payments?.captures?.[0];
+  if (!captureRecord) {
+    return { error: "Payment could not be confirmed. Please contact support." };
   }
 
   const { error: paymentError } = await admin.from("payments").insert({
     order_id: orderId,
-    razorpay_payment_id: razorpayPaymentId,
-    razorpay_signature: razorpaySignature,
+    provider: "paypal",
+    provider_payment_id: captureRecord.id,
     amount: order.total,
     status: "paid",
+    raw_response: capture.data as unknown as Json,
   });
 
-  // Unique violation on razorpay_payment_id means this was already
+  // Unique violation on provider_payment_id means this was already
   // recorded (e.g. the webhook beat us to it) — not an error, just
   // proceed to (idempotent) fulfillment.
   if (paymentError && paymentError.code !== "23505") {

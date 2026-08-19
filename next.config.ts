@@ -4,7 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
 
 // Content-Security-Policy allowlist, kept as loose as the app actually
-// requires — Razorpay Checkout injects its own iframe/script, Supabase is
+// requires — the PayPal JS SDK injects its own iframe/script, Supabase is
 // the API/websocket backend, and lesson videos embed from YouTube/Vimeo.
 // React's dev mode uses eval() for debugging (stack-trace reconstruction,
 // Fast Refresh); it never does in production, per React's own console
@@ -17,12 +17,12 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  `connect-src 'self' ${supabaseOrigin} wss://${supabaseOrigin.replace(/^https?:\/\//, "")} https://api.razorpay.com https://lumberjack.razorpay.com`,
-  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://checkout.razorpay.com`,
+  `connect-src 'self' ${supabaseOrigin} wss://${supabaseOrigin.replace(/^https?:\/\//, "")} https://api-m.paypal.com https://api-m.sandbox.paypal.com`,
+  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""} https://www.paypal.com https://www.paypalobjects.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.youtube.com https://player.vimeo.com",
+  "frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com https://www.youtube.com https://player.vimeo.com",
   "object-src 'none'",
 ].join("; ");
 

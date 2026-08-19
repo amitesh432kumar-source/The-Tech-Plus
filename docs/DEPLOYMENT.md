@@ -15,17 +15,21 @@
 - [ ] Decide on email confirmation policy (currently ON by default — recommended to keep).
 - [ ] Consider upgrading off the free tier before real traffic (pausing/cold-start limits).
 
-## 2. Razorpay (payments)
+## 2. PayPal (payments)
 
-- [ ] Create a Razorpay account (test mode is enough to verify the flow end-to-end).
-- [ ] Add `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` to environment (local + Vercel).
-- [ ] Configure the webhook in the Razorpay dashboard:
-      `https://<your-domain>/api/webhooks/razorpay`, event: `payment.captured` (minimum).
-- [ ] Add `RAZORPAY_WEBHOOK_SECRET` (the signing secret shown when creating the webhook).
-- [ ] Run a real test-mode purchase end-to-end (course + a paid webinar) before switching to
-      live keys. Confirm: order created → Checkout opens → payment succeeds → enrollment/
+- [ ] Create a PayPal Developer account and a REST API app at developer.paypal.com (sandbox
+      mode is enough to verify the flow end-to-end).
+- [ ] Add `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` to
+      environment (local + Vercel). `NEXT_PUBLIC_PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_ID` are the
+      same value — one is read by the browser bundle, the other server-side.
+- [ ] Configure the webhook in the PayPal developer dashboard:
+      `https://<your-domain>/api/webhooks/paypal`, event: `PAYMENT.CAPTURE.COMPLETED` (minimum).
+- [ ] Add `PAYPAL_WEBHOOK_ID` (the webhook ID shown when creating the webhook).
+- [ ] Set `PAYPAL_CURRENCY` (default `USD`) and leave `PAYPAL_MODE=sandbox` until ready to go live.
+- [ ] Run a real sandbox-mode purchase end-to-end (course + a paid webinar) before switching to
+      live keys. Confirm: order created → PayPal Buttons render → payment succeeds → enrollment/
       registration granted → confirmation notification appears in `/dashboard/notifications`.
-- [ ] Switch to live keys only after the above is verified.
+- [ ] Switch to live keys (`PAYPAL_MODE=live`, live app credentials) only after the above is verified.
 
 ## 3. Email (optional but recommended)
 
@@ -38,12 +42,12 @@
 - [ ] Import the repository, framework preset: Next.js.
 - [ ] Set all environment variables from `.env.example` in the Vercel project settings —
       `NEXT_PUBLIC_*` vars for both Production and Preview, secrets for Production (and
-      Preview only if you want preview deploys to hit real Supabase/Razorpay).
+      Preview only if you want preview deploys to hit real Supabase/PayPal).
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to the real production domain (used in metadata, sitemap,
       and OAuth/payment redirect URLs).
 - [ ] Confirm the build succeeds on Vercel (`npm run build`) — verified clean locally as of
       this commit.
-- [ ] After first deploy, re-check Google OAuth and Razorpay webhook URLs point at the real
+- [ ] After first deploy, re-check Google OAuth and PayPal webhook URLs point at the real
       domain, not `localhost`.
 
 ## 5. Post-deploy smoke test

@@ -703,7 +703,7 @@ export type Database = {
           currency: string
           discount: number
           id: string
-          razorpay_order_id: string | null
+          provider_order_id: string | null
           status: string
           subtotal: number
           total: number
@@ -716,7 +716,7 @@ export type Database = {
           currency?: string
           discount?: number
           id?: string
-          razorpay_order_id?: string | null
+          provider_order_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -729,7 +729,7 @@ export type Database = {
           currency?: string
           discount?: number
           id?: string
-          razorpay_order_id?: string | null
+          provider_order_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -760,9 +760,10 @@ export type Database = {
           currency: string
           id: string
           order_id: string
+          provider: string
+          provider_payment_id: string | null
+          provider_reference: string | null
           raw_response: Json | null
-          razorpay_payment_id: string | null
-          razorpay_signature: string | null
           status: string
         }
         Insert: {
@@ -771,9 +772,10 @@ export type Database = {
           currency?: string
           id?: string
           order_id: string
+          provider?: string
+          provider_payment_id?: string | null
+          provider_reference?: string | null
           raw_response?: Json | null
-          razorpay_payment_id?: string | null
-          razorpay_signature?: string | null
           status?: string
         }
         Update: {
@@ -782,9 +784,10 @@ export type Database = {
           currency?: string
           id?: string
           order_id?: string
+          provider?: string
+          provider_payment_id?: string | null
+          provider_reference?: string | null
           raw_response?: Json | null
-          razorpay_payment_id?: string | null
-          razorpay_signature?: string | null
           status?: string
         }
         Relationships: [
