@@ -10,7 +10,7 @@ Tracking phase completion per the master build spec. A phase is only checked off
 - [x] **Phase 6** — Webinar/live class system
 - [x] **Phase 7** — Razorpay payments + enrollment (code-complete; needs real Razorpay keys to test live)
 - [x] **Phase 8** — Student dashboard
-- [ ] Phase 9 — Admin dashboard + CMS
+- [x] **Phase 9** — Admin dashboard + CMS
 - [ ] Phase 10 — Certificates + reviews + notifications + SEO
 - [ ] Phase 11 — Security + performance + accessibility
 - [ ] Phase 12 — Final QA + deployment preparation
@@ -92,3 +92,17 @@ Tracking phase completion per the master build spec. A phase is only checked off
 ## Blocker hit during Phase 7 verification
 
 `SUPABASE_SERVICE_ROLE_KEY` was left blank in Phase 3 (credentials aren't something Claude enters itself). Discovered live via a genuine runtime error ("supabaseKey is required") when testing checkout. This key gates: order creation, certificate issuance, notification creation, webinar/event meeting-link reveal, and most of Phase 9's admin CMS. The user is adding it directly to `.env.local` from the Supabase dashboard (Project Settings → API → service_role secret) — Claude does not see or handle the value. **Most admin CRUD does not actually need this key** — RLS already grants `is_admin()` full read/write on courses/webinars/events/etc. via the normal authenticated client; only the few columns already locked down (lesson `content_url`, webinar/event `meeting_url`/`recording_url`) require the service-role client.
+
+## Phase 9 notes — Admin dashboard + CMS
+
+- `AdminShell`/`AdminNav` mirror the dashboard pattern; every admin page calls `requireRole("admin")` server-side (defense in depth alongside the `proxy.ts` middleware gate from Phase 3).
+- **Key architectural finding**: most admin CRUD does *not* need the service-role client. RLS already grants `is_admin()` full read/write on courses, modules, categories, coupons, orders, reviews, etc. via the normal authenticated client. The service-role client is only required for the specific columns already locked down at the grant level: `course_lessons.content_url/content_text` (migration 0007) and `webinars/events.meeting_url/recording_url` (migration 0008) — both to read existing values back into an edit form and, for consistency, to write them.
+- Courses: list, create, edit (metadata + learning outcomes/requirements as line-separated text) plus an inline curriculum editor (add/delete modules and lessons, set content type/URL/duration/preview flag). Module/lesson **reordering is via a plain order-position on create, not drag-and-drop** — a reasonable scope cut given the time budget; still fully functional, just less polished than a DnD UI.
+- Webinars and Workshops/Events: list, create, edit, delete — mirrors the courses pattern, using the service-role client throughout since every field on those forms includes the locked-down meeting/recording URLs.
+- Students: searchable list joining `profiles` (normal client) with `auth.users` emails (service-role client — email lives outside `public` schema).
+- Orders: full order list with status badges, no fabricated data — empty until real orders exist.
+- Coupons: create form + list with an active/inactive toggle switch and delete.
+- Reviews: moderation queue (approve/reject) for `pending` reviews.
+- Not built in this pass (lower priority given scope): a dedicated admin notifications/announcement composer, and a `site_settings` key-value editor. Both tables and RLS policies already exist for a future pass.
+
+Build clean at 40 routes; lint clean. Not yet exercised in-browser as an admin (blocked on `SUPABASE_SERVICE_ROLE_KEY`, being added directly to `.env.local` by the account owner).
