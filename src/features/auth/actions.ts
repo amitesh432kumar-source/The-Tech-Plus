@@ -120,13 +120,22 @@ export async function resetPasswordAction(
   redirect("/login");
 }
 
-export async function signInWithGoogleAction() {
+export async function signInWithGoogleAction(formData: FormData) {
   const supabase = await createClient();
   const origin = await getSiteOrigin();
 
+  // Carry ?next= through the OAuth round trip so Google sign-in returns the
+  // user to the page they came from, same as password login. Guarded against
+  // open redirects the same way.
+  const next = formData.get("next");
+  const safeNext =
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+
+  const callback = `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${origin}/auth/callback` },
+    options: { redirectTo: callback },
   });
 
   if (error || !data.url) {

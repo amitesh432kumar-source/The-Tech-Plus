@@ -5,7 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+
+  // `next` arrives from the OAuth round trip, so treat it as untrusted:
+  // only allow same-site absolute paths, never protocol-relative (`//evil`)
+  // or absolute URLs, which would turn this into an open redirect.
+  const requestedNext = searchParams.get("next");
+  const next =
+    requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/dashboard";
 
   if (code) {
     const supabase = await createClient();

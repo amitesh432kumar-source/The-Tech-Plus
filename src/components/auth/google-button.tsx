@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { signInWithGoogleAction } from "@/features/auth/actions";
 
-export function GoogleButton() {
+export function GoogleButton({ next }: { next?: string }) {
   return (
     <form action={signInWithGoogleAction}>
+      {next && <input type="hidden" name="next" value={next} />}
       <Button type="submit" variant="outline" className="w-full">
         <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
           <path
