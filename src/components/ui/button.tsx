@@ -44,12 +44,16 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      // A `render` override (e.g. rendering as a Next.js <Link>) means this
+      // isn't an actual <button> element, so native button semantics don't apply.
+      nativeButton={nativeButton ?? !props.render}
       {...props}
     />
   )
