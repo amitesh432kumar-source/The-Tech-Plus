@@ -1,0 +1,9 @@
+[build]
+  # Netlify's Next.js Runtime doesn't yet support bundling Turbopack's
+  # edge-function (middleware) output, so build with webpack here only —
+  # Vercel and local dev still use Turbopack (the default "next build").
+  command = "next build --webpack"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
